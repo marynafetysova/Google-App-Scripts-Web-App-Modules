@@ -1,0 +1,60 @@
+
+
+<script type="text/javascript">
+    function chartFirstRightDraw(result) {
+        var data = new google.visualization.DataTable();
+        data.addColumn('string', 'Period');
+        data.addColumn('number', 'Sales', );
+        data.addColumn('number', 'Budget', );
+        var stringData = result;
+        data.addRows(JSON.parse(stringData));
+        var options = {
+            legend: {
+                position: 'top',
+                textStyle: {
+                    color: '#FFF'
+                },
+            },
+            chartArea: {
+                left: 120,
+                width: '95%',
+                height: '55%'
+            },
+            annotations: {
+                textStyle: {
+                    fontSize: 18,
+                    bold: false,
+                    color: '#FFF',
+                    auraColor: '#FFF',
+                    opacity: 0.8
+                }
+            },
+            title: 'Chart Name Here',
+            titleTextStyle: {
+                color: '#FFF'
+            },
+            curveType: 'function',
+            backgroundColor: '#2E2E2E',
+            height: 400,
+            fontName: 'Verdana',
+            colors: ['#1de9b6', '#CC0000', '#64ffda', '#80cbc4'],
+            hAxis: {
+                textStyle: {
+                    color: '#FFF'
+                },
+                format: 'currency',
+            },
+            vAxis: {
+                textStyle: {
+                    color: '#FFF'
+                },
+                format: 'currency'
+            },
+        };
+        var chart = new google.visualization.LineChart(document.getElementById('chart_first_right'));
+               google.visualization.events.addListener(chart, 'ready', function () 
+                 {  chartFirstRight = chart.getImageURI();
+                 });
+        chart.draw(data, options);
+    }
+</script>
