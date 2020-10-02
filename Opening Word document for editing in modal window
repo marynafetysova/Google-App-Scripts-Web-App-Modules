@@ -1,0 +1,78 @@
+  <!DOCTYPE html>
+<html>
+
+<head>
+    <style>
+        header {
+            width: 100%;
+            background: #cccccc;
+            position: relative;
+            top: 0;
+            height: 100px;
+            opacity: .8;
+        }
+        
+        thead {
+            color: #FFFFFF;
+            font: 'Questrial';
+            font-size: 20px;
+            background-color: #808080;
+            text-align: centre;
+            font-weight: 'bold';
+        }
+        
+        tbody {
+            color: #4c4949;
+            font: 'Questrial';
+            font-size: 14px;
+            text-align: centre;
+        }
+        
+        tfoot {
+            color: #FFFFFF;
+            font: 'Questrial';
+            font-size: 20px;
+            background-color: #808080;
+            text-align: centre;
+            font-weight: 'bold';
+        }
+        
+        table {
+            width: 100%;
+            border: 1px solid #808080;
+        }
+        
+        th,
+        td {
+            width: 33%;
+            border: 1px solid #808080;
+        }
+        
+        .content {
+            position: relative;
+            top: 0px;
+            min-height: 100%;
+            width: 100%;
+            padding: 10px 0 0px 0;
+            margin: 0
+        }
+    </style>
+
+
+    <!-- Include -->
+    <base target="_top">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+<div id="output"></div>
+
+<body onload="document.getElementById('myiframe').src = '<?!=data ?>';">
+
+    <p style='font-family:Questrial; background-color: #999999; color:white; font:Questrial; font-size: 18px; 
+    font-weight:bold; text-align:center'>
+        THE TEXT OF SUBMITTED PACKAGE </p>
+    <iframe id="myiframe"></iframe>
+    <tfoot>
+    </tfoot>
+</body>
+
+</html>
