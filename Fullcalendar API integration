@@ -237,3 +237,45 @@ $(document).ready(function() {
     });
 }); <
 /script>
+
+
+<script language = "JavaScript" >
+    var chunk = function(event, type) {
+        var chunked = [];
+        if (event.start.format('HHmm') > event.end.format('HHmm')) {
+            return false; //Can't chunk, starttime > endtime
+        }
+        var i = 0;
+        for (var day = event.start.clone(); !day.isAfter(event.end, 'day'); day.add(1, 'day')) {
+            chunked.push({
+                start: day.clone(),
+                end: day.clone().hour(event.end.hour()).minute(event.end.minute()),
+                id: "chunked-" + type, //Used as a flag in the render function
+                color: "#81c784",
+                title: 'Available',
+                chainID: event.chainID,
+                editable: true,
+                description: '',
+            })
+
+        }
+        return chunked;
+    };
+// Takes an event and renders it chunked. Also remove the previous chunked-helper.
+// Runs after a timeout and only once.
+var renderChunkedHelper = (function() {
+    var id = 0;
+    return function(event) {
+        window.clearTimeout(id);
+        id = window.setTimeout(function() {
+            var chunked = chunk(event, "helper");
+            eventToChunk = null;
+            $("#calendar").fullCalendar("removeEvents", "chunked-helper");
+            for (var i = 0; i < chunked.length; i++) {
+                $("#calendar").fullCalendar("renderEvent", chunked[i]); //Manually render each chunk
+            }
+        }, 0); //delay in ms. Could be tweaked for optimal perfomance
+
+    }
+})();
+</script>
