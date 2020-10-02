@@ -1,0 +1,51 @@
+function SendPackageToProlongTrigger() {
+    var connectorInstance = 'jdbc:mysql://' + ServerIP + ':' + SQL_Port;
+    var ConnectString = connectorInstance + '/' + SQL_DB;
+    var conn = Jdbc.getConnection(ConnectString, SQL_Usr, SQL_Pwd);
+    var execStmt = conn.createStatement();
+    conn.setAutoCommit(false);
+    var startDay = new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1);
+    var date = startDay;
+    var year = date.getFullYear();
+    var month = ('0' + (date.getMonth() + 1)).slice(-2);
+    var day = ('0' + date.getDate()).slice(-2);
+    var string = year + '-' + month + '-' + day;
+    startDay = string;
+    var endDay = new Date(new Date().getFullYear(), new Date().getMonth(), 0);
+    var date = endDay;
+    var year = date.getFullYear();
+    var month = ('0' + (date.getMonth() + 1)).slice(-2);
+    var day = ('0' + date.getDate()).slice(-2);
+    var string = year + '-' + month + '-' + day;
+    endDay = string;
+    var monthLong = date.toDateString().substring(4, 7);
+    var aliases = GmailApp.getAliases();
+    Logger.log(aliases); //returns the list of aliases you own
+    Logger.log(aliases[0]);
+    var fromEmail;
+    for (var i = 0; i < aliases.length; i++) {
+        if (aliases[i] == defaultCalendar) {
+            fromEmail = aliases[i];
+        } else {
+            fromEmail = Session.getActiveUser().getEmail();
+        }
+    }
+    var htmlBody = '';
+    htmlBody +=
+        'This package will be prolonged automatically tomorrow: ' + '<br>' +
+        'Start Date:  ' + result[i + 1] + '<br>' +
+        'End Date: ' + result[i + 2] + '<br>' +
+        'Package Type:  ' + result[i + 3] + '<br>' +
+        'Hours Per Week:   ' + result[i + 4] + '<br>' +
+        'Family:   ' + result[i + 5] + '<br>' +
+        '<br>' +
+        '<br>';
+    GmailApp.sendEmail(result[i + 7], result[i + 3] + " package to prolong: " + result[i + 5] + ' Family ', htmlBody, {
+        'from': fromEmail,
+        'htmlBody': htmlBody
+    });
+
+}
+execStmt.close();
+conn.close();
+}
