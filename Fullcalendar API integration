@@ -1,0 +1,239 @@
+$(document).ready(function() {
+    $(document).on('click', "#submit", function() {
+        var valuesArr = [];
+        $.each($(".selectpicker option:selected"), function() {
+            valuesArr.push($(this).val());
+            valuesArr.push($(this).parent().attr('label'));
+        });
+        google.script.run.withSuccessHandler(calendarEvents).calendarEventsCoach(valuesArr);
+    });
+    $('#calendar').fullCalendar({
+        header: {
+            left: 'prevYear, nextYear, prev,next today,',
+            center: 'title',
+            right: 'month,agendaWeek,agendaDay'
+        },
+        defaultDate: new Date(),
+        defaultView: 'agendaWeek',
+        navLinks: true,
+        editable: true,
+        selectable: false,
+        selectOverlap: true,
+        eventOverlap: true,
+        eventResourceEditable: true,
+        displayEventTime: true,
+        firstDay: 1,
+        aspectRatio: 1.8,
+        scrollTime: '00:00',
+        weekends: true,
+        eventLimit: false,
+        selectHelper: true,
+        eventRender: function(event, element) {
+            var start = moment(event.start).startOf('week').isoWeekday(1);
+            var end = moment(event.start).startOf('week').isoWeekday(7);
+                var dataToFind = start.format('YYYY-MM-DD');
+                $("td[data-date='" + dataToFind + "']").addClass('activeDay');
+                start.add(1, 'd');
+            if (event.rendering === 'background') {
+                element.append(event.title);
+            }
+        },
+        eventClick: function(calEvent, jsEvent, view) {
+            var timezone = timezoneSelected;
+            var initialTime = moment.tz(moment(calEvent.start._i).format("YYYY-MM-DD HH:mm:ss"), timezone);
+            var now = moment();
+            var difference = parseFloat((initialTime - now) / 3600 / 1000).toFixed(2);
+            if (calEvent.title == 'Busy') {
+                $("#calendar").fullCalendar("unselect");
+                window.alert('You can not change Google Calendar Event');
+            } else if (initialTime < now) {
+                $("#calendar").fullCalendar("unselect");
+                window.alert('Events in the past cannot be deleted.');
+            } else if (activeUserRole !== 'Admin' && activeUserRole !== 'Developer') {
+                $("#calendar").fullCalendar("unselect");
+                window.alert('Only Admin can delete events in embed calendars');
+            } else {
+                modalOverlay.style.display = "block";
+                modalQuestion.style.display = "block";
+                $('#client').click(function(event) {
+                    $('#calendar').fullCalendar('removeEvents', function(event) {
+                        return event == calEvent;
+                    });
+                    var status = 'Cancelled by Client';
+                    calEvent.status = status;
+                    arrayToDelete.push(calEvent);
+                    $('#calendar').unbind();
+                    modalOverlay.style.display = "none";
+                    modalQuestion.style.display = "none";
+
+                });
+
+                $('#contractor').click(function(event) {
+                    $('#calendar').fullCalendar('removeEvents', function(event) {
+                        return event == calEvent;
+                    });
+                    var status = 'Cancelled by Contractor';
+                    calEvent.status = status;
+                    arrayToDelete.push(calEvent);
+                    $('#calendar').unbind();
+                    modalOverlay.style.display = "none";
+                    modalQuestion.style.display = "none";
+                });
+            }
+        },
+        viewRender: function(view, element) {},
+        eventMouseover: function(data, event, view) {
+            tooltip = '<div class="tooltiptopicevent" style="width:auto;height:auto;font-size:10px;background:#fffde7;position:absolute;z-index:10001;padding:10px 10px 10px 10px ;  line-height: 200%;">' + data.title + '</br>' + data.description + '</div>';
+            $("body").append(tooltip);
+            $(this).mouseover(function(e) {
+                $(this).css('z-index', 10000);
+                $('.tooltiptopicevent').fadeIn('500');
+                $('.tooltiptopicevent').fadeTo('10', 1.9);
+            }).mousemove(function(e) {
+                $('.tooltiptopicevent').css('top', e.pageY + 10);
+                $('.tooltiptopicevent').css('left', e.pageX + 20);
+            });
+        },
+        eventMouseout: function(data, event, view) {
+            $(this).css('z-index', 8);
+            $('.tooltiptopicevent').remove();
+        },
+        eventDrop: function(event, delta, revertFunc, jsEvent, ui, view) {
+            var timezone = timezoneSelected;
+            var initialTime = moment.tz(moment(event.start._i).format("YYYY-MM-DD HH:mm:ss"), timezone);
+            var now = moment();
+            var difference = parseFloat((initialTime - now) / 3600 / 1000).toFixed(2);
+            var newTime = moment.tz(moment(event.start).format("YYYY-MM-DD HH:mm:ss"), timezone);
+            var text = '';
+            var conflictWithAvailability = false;
+            var conflictWithGoogleCalendar = false;
+            var conflictWithContainer = false;
+            var conflictWithSession = false;
+            var teamMember = event.teamMember;
+            //              if(!isValidEventForTeamMember(event.start,event.end, teamMember))
+            //                        {   text+= ' available hours ';
+            //                            conflictWithAvailability = true;
+            //                        }
+            if (isValidEventGoogleCalendar(event.start, event.end, teamMember)) {
+                if (text == '') {
+                    text += 'Google Calendar Events ';
+                } else {
+                    text += ', Google Calendar Events ';
+                }
+                conflictWithGoogleCalendar = true;
+            }
+            if (isValidEventOtherSessions(event.start, event.end, teamMember)) {
+                if (text == '') {
+                    text += 'other sessions ';
+                } else {
+                    text += ', other sessions ';
+                }
+                conflictWithSession = true;
+            }
+            if (isValidEventFreeContainers(event.start, event.end, teamMember)) {
+                if (text == '') {
+                    text += 'free containers ';
+                } else {
+                    text += ', free containers ';
+                }
+                conflictWithContainer = true;
+            }
+            if (activeUserRole !== 'Admin' && activeUserRole !== 'Developer') {
+                window.alert('Only Admin can change events in embed calendars');
+                revertFunc();
+            } else if (event.title == 'Busy') {
+                window.alert('You can not change Google Calendar Event');
+                revertFunc();
+            } else if (initialTime < now) {
+                window.alert('The past event can not been changed');
+                revertFunc();
+            } else if (newTime < now) {
+                window.alert('Events in the past cannot be rescheduled.');
+                revertFunc();
+            } else if (conflictWithAvailability || conflictWithGoogleCalendar || conflictWithContainer || conflictWithSession) {
+                var r = confirm("A session at " + moment(initialTime).format("YYYY-MM-DD HH:mm") + " has a conflict with " + text + " for " + teamMember + ". Proceed anyway?");
+                if (r === true) {
+                    arrayToMove.push(event);
+                } else {
+                    revertFunc();
+                }
+            } else {
+                var r = confirm("Reschedule selected event? All changes will not been saved until SAVE CHANGES button is pressed");
+                if (r === true) {
+                    arrayToMove.push(event);
+                } else {
+                    revertFunc();
+                }
+            }
+        },
+        eventResize: function(event, delta, revertFunc, jsEvent, ui, view) {
+            var timezone = timezoneSelected;
+            var initialTime = moment.tz(moment(event.start._i).format("YYYY-MM-DD HH:mm:ss"), timezone);
+            var now = moment();
+            var difference = parseFloat((initialTime - now) / 3600 / 1000).toFixed(2);
+            var newTime = moment.tz(moment(event.start).format("YYYY-MM-DD HH:mm:ss"), timezone);
+            var text = '';
+            var conflictWithAvailability = false;
+            var conflictWithGoogleCalendar = false;
+            var conflictWithContainer = false;
+            var conflictWithSession = false;
+            var teamMember = event.teamMember;
+            //              if(!isValidEventForTeamMember(event.start,event.end, teamMember))
+            //                       {   text+= ' available hours ';
+            //                            conflictWithAvailability = true;
+            //                        }
+            if (isValidEventGoogleCalendar(event.start, event.end, teamMember)) {
+                if (text == '') {
+                    text += 'Google Calendar Events ';
+                } else {
+                    text += ', Google Calendar Events ';
+                }
+                conflictWithGoogleCalendar = true;
+            }
+            if (isValidEventOtherSessions(event.start, event.end, teamMember)) {
+                if (text == '') {
+                    text += 'other sessions ';
+                } else {
+                    text += ', other sessions ';
+                }
+                conflictWithSession = true;
+            }
+            if (isValidEventFreeContainers(event.start, event.end, teamMember)) {
+                if (text == '') {
+                    text += 'free containers ';
+                } else {
+                    text += ', free containers ';
+                }
+                conflictWithContainer = true;
+            }
+            if (activeUserRole !== 'Admin' && activeUserRole !== 'Developer') {
+                window.alert('Only Admin can change events in embed calendars');
+                revertFunc();
+            } else if (event.title == 'Busy') {
+                window.alert('You can not change Google Calendar Event');
+                revertFunc();
+            } else if (initialTime < now) {
+                window.alert('The past event can not been changed');
+                revertFunc();
+            } else if (newTime < now) {
+                window.alert('Events in the past cannot be rescheduled.');
+                revertFunc();
+            } else if (conflictWithAvailability || conflictWithGoogleCalendar || conflictWithContainer || conflictWithSession) {
+                var r = confirm("A session at " + moment(initialTime).format("YYYY-MM-DD HH:mm") + " has a conflict with " + text + " for " + teamMember + ". Proceed anyway?");
+                if (r === true) {
+                    arrayToMove.push(event);
+                } else {
+                    revertFunc();
+                }
+            } else {
+                var r = confirm("Reschedule selected event? All changes will not been saved until SAVE CHANGES button is pressed");
+                if (r === true) {
+                    arrayToMove.push(event);
+                } else {
+                    revertFunc();
+                }
+            }
+        },
+    });
+}); <
+/script>
