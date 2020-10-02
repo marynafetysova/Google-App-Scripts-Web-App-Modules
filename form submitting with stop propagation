@@ -1,0 +1,25 @@
+<script language="JavaScript">
+    $(document).ready(function() {
+        $(document).on('click', "#submit", function(e) {
+            var $link = $(e.target);
+            if (!$link.data('lockedAt')) {
+                $link.data('lockedAt', +new Date());
+                var valuesArr = [];
+                $.each($(".selectpicker option:selected"), function() {
+                    valuesArr.push($(this).val());
+                    valuesArr.push($(this).parent().attr('label'));
+                });
+                var eSelect = document.getElementById('sessionChoosed').value;
+                var sessionIdNeeded = sessionId[eSelect];
+                valuesArr.push(sessionIdNeeded);
+                google.script.run
+                    .withSuccessHandler().coachLogSubmit(valuesArr);
+            } else {
+                e.preventDefault();
+                e.stopPropagation();
+                e.stopImmediatePropagation();
+            }
+
+        });
+    });
+</script>
