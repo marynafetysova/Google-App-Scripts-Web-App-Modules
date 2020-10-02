@@ -1,0 +1,149 @@
+// parsing clients Emails from corporate Gmail boxes
+function parseEmailMessages() { //connecting to MySQL 
+    var connectorInstance = 'jdbc:mysql://' + ServerIP + ':' + SQL_Port;
+    var ConnectString = connectorInstance + '/' + SQL_DB;
+    var conn = Jdbc.getConnection(ConnectString, SQL_Usr, SQL_Pwd);
+    var execStmt = conn.createStatement();
+    //Getting students email from Google Cloud SQL/
+    var col = 0;
+    var studentEmailResult = Array(0);
+    var studentEmail = execStmt.executeQuery("SELECT \
+    `students`.`name`,\
+    `students`.`email`,\
+    `students`.`email2`\
+    FROM `mydb`.`students`\
+    WHERE (`students`.`email` IS NOT NULL AND `students`.`email` <> '') OR\
+    (`students`.`email2` IS NOT NULL AND `students`.`email` <> '') ");
+    while (studentEmail.next()) {
+        studentEmailResult[col] = studentEmail.getString(1);
+        col++;
+    }
+    studentEmail.close();
+
+    //Getting team members email from Google Cloud SQL/
+    var col = 0;
+    var teamMemberIDResult = Array(0);
+    var teamMemberEmail = Session.getActiveUser().getEmail();
+    if (teamMemberEmail == 'undefined') {
+        var result = new Array(0);
+        result[0] = 'error';
+        result[1] = 'email not found';
+        return (result);
+    }
+    var teamMemberID = execStmt.executeQuery("SELECT \
+    `team_members`.`team_member_id` \
+    FROM `mydb`.`team_members` \
+    WHERE `team_members`.`email` = '" + teamMemberEmail + "'");
+    while (teamMemberID.next()) {
+        teamMemberIDResult = teamMemberID.getString(1);
+        col++;
+    }
+    teamMemberID.close();
+    // Reading letters from students 
+    var lastDate = execStmt.executeQuery("SELECT \
+    unix_timestamp(`email`.`message_time`)\
+    FROM `mydb`.`email`\
+    GROUP BY `email`.`message_time`, `email`.`team_member_id`\
+    ORDER BY `email`.`team_member_id`, `email`.`message_time` DESC\
+    LIMIT 1");
+    var lastDateResult = new Array(0);
+    while (lastDate.next()) {
+        lastDateResult = lastDate.getString(1);
+    }
+    lastDate.close();
+    var timestamp = 0;
+    if (lastDateResult == 0)
+    //  { timestamp = (new Date().getTime()/1000).toFixed(0);
+    {
+        timestamp = '1486011928';
+    } else {
+        timestamp = lastDateResult;
+    }
+    Logger.log(timestamp);
+    var getDatePrefix = function(date) {
+        var yy = date.getFullYear().toString().slice(-2);
+        var mm = (date.getMonth() + 1).toString(); // getMonth() is zero-based
+        var dd = date.getDate().toString();
+        return yy + (mm[1] ? mm : "0" + mm[0]) + (dd[1] ? dd : "0" + dd[0]); // padding
+    }
+    for (var i = 0; i < studentEmailResult.length; i++) {
+        var pattern = ("after: " + timestamp + " from: '" + studentEmailResult[i] + "'");
+        //  {  var pattern = ("after: "+timestamp+" from: ' '");
+        var threads_update = GmailApp.search(pattern);
+        for (var j = 0; j < threads_update.length; j++) {
+            if (threads_update[j].getFirstMessageSubject().match(/^((Updated )?Invitation|Accepted|Canceled( Event)?):/) !== null) {
+                (threads_update[j].markUnimportant());
+                Logger.log('true');
+            };
+        }
+        var threads = GmailApp.search(pattern + ' AND (-label:Unimportant)');
+        var folders = DriveApp.getRootFolder().searchFolders('title = "GmailToDrive"');
+        if (folders.hasNext() == false) {
+            var folder = DriveApp.getRootFolder().createFolder('GmailToDrive');
+        }
+        while (folders.hasNext()) {
+            var folder = folders.next();
+        }
+        for (var j = 0; j < threads.length; j++) {
+            var messagesCount = threads[j].getMessageCount();
+            for (var h = 0; h < messagesCount; h++) {
+                var messages = threads[j].getMessages()[h];
+                var body = messages.getPlainBody();
+                var subject = messages.getSubject();
+                var author = messages.getFrom();
+                var cc = messages.getCc();
+                var attachments_count = messages.getAttachments().length;
+                var response = new Array(0);
+                for (var k = 0; k < attachments_count; k++) {
+                    var attachment = messages.getAttachments()[k];
+                    var attachmentBlob = attachment.copyBlob();
+                    var attachmentName = attachmentBlob.getName();
+                    var datePrefix = getDatePrefix(messages.getDate());
+                    var senderDomain = author.replace(/(.+)@(\w+).(\w+)>?/, "$2");
+                    var newAttachmentName = datePrefix + ' ' + senderDomain + ' ' + attachmentName;
+                    attachmentBlob.setName(newAttachmentName);
+                    var file = folder.createFile(attachmentBlob);
+                    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+                    response[k] = file.getUrl();
+                    Logger.log(response[k]);
+                }
+                var studentID = execStmt.executeQuery("SELECT \
+              `students`.`student_id` \
+               FROM `mydb`.`students` \
+              WHERE `students`.`email` = '" + studentEmailResult[i] + "'");
+                var studentIDResult = '';
+                while (studentID.next()) {
+                    studentIDResult = studentID.getString(1);
+                }
+                studentID.close();
+                var receiver = teamMemberEmail;
+                var attachment = messages.getAttachments();
+                var message_time = messages.getDate();
+                var stmt = conn.prepareStatement('INSERT INTO email' +
+                    '(team_member_id, student_id, type, subject, body, message_time, cc, receiver_email, attachments_count, \
+              link1, link2, link3, link4, link5) \
+              values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+                stmt.setString(1, teamMemberIDResult);
+                stmt.setString(2, studentIDResult);
+                stmt.setString(3, 'sent');
+                stmt.setString(4, subject);
+                stmt.setString(5, body);
+                stmt.setString(6, Utilities.formatDate(message_time, 'UTC', "yyyy-MM-dd HH:mm:ss"));
+                stmt.setString(7, cc);
+                stmt.setString(8, receiver);
+                stmt.setString(9, attachments_count);
+                stmt.setString(10, response[0]);
+                stmt.setString(11, response[1]);
+                stmt.setString(12, response[2]);
+                stmt.setString(13, response[3]);
+                stmt.setString(14, response[4]);
+                stmt.execute();
+                var batch = stmt.executeBatch();
+                stmt.close();
+            }
+        }
+    }
+
+    execStmt.close();
+    conn.close();
+}
