@@ -1,0 +1,46 @@
+function onOpen(e) { 
+   var mysheet = SpreadsheetApp.openById(SpreadsheetApp.getActiveSpreadsheet().getId());
+
+    userProperties.setProperties({
+        'userEmail': Session.getActiveUser().getEmail()
+    });
+    userProperties.setProperties({
+        'userTimezone': CalendarApp.getCalendarById(defaultCalendar).getTimeZone()
+    });
+    SpreadsheetApp.getUi()
+        .createMenu('AUTHORIZATION')
+        .addItem('AUTHORIZE', 'getId')
+        .addItem('Show Sidebar', 'showSidebar')
+        .addSeparator()
+        .addSubMenu(SpreadsheetApp.getUi().createMenu('Information')
+            .addItem('Student Information', 'StudentInformation')
+            .addItem('New Student', 'NewStudent')
+            .addItem('Learning Plans Information', 'LearningPlansInformation')
+            .addItem('New Learning Plan', 'NewLearningPlan')
+            .addItem('Families Information', 'FamiliesInformation')
+            .addItem('Team Members Information', 'TeamMembersInformation')
+            .addItem('New Team Member', 'NewTeamMember'))
+        .addSeparator()
+        .addSubMenu(SpreadsheetApp.getUi().createMenu('Activity')
+            .addItem('Activity Logs', 'ActivityLogs')
+            .addItem('New Activity Log', 'NewActivityLog')
+            .addItem('Email', 'Email')
+            .addItem('Notifications', 'Notifications'))
+        .addSeparator()
+        .addSubMenu(SpreadsheetApp.getUi().createMenu('Schedule')
+            .addItem('Tasks', 'Tasks')
+            .addItem('Session Scheduling', 'SessionScheduling')
+            .addItem('Tracking Attendance', 'TrackingAttendance')
+            .addItem('Meeting with Client', 'MeetingWithClient'))
+        .addSeparator()
+        .addSubMenu(SpreadsheetApp.getUi().createMenu('Lessons')
+            .addItem('Coaching', 'Coaching')
+            .addItem('Tutoring', 'Tutoring')
+            .addItem('Session Paperwork', 'Session Paperwork')
+            .addItem('Session Tracking', 'SessionTracking'))
+        .addToUi();
+    firstPage();
+    launchFormCurrentTasks();
+    showSidebar();
+
+}
