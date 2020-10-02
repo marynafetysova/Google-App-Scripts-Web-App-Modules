@@ -1,0 +1,9 @@
+function launchNewTeamInformation() {
+    var htmlApp = HtmlService.createTemplateFromFile('Team');
+    var html = htmlApp.evaluate();
+    html.setSandboxMode(HtmlService.SandboxMode.IFRAME)
+        .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
+        .setWidth(1000)
+        .setHeight(500);
+    SpreadsheetApp.getUi().showModalDialog(html, 'Team Information ');
+}
